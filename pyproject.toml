@@ -1,0 +1,32 @@
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "gitanalytics-local"
+version = "1.5.0"
+description = "Local, read-only business intelligence for collections of Git repositories"
+readme = "README.md"
+requires-python = ">=3.10"
+license = {file = "LICENSE"}
+authors = [{name = "GitAnalytics contributors"}]
+keywords = ["git", "analytics", "business-intelligence", "reporting", "sqlite"]
+classifiers = [
+  "Development Status :: 4 - Beta",
+  "Environment :: Console",
+  "License :: OSI Approved :: MIT License",
+  "Operating System :: OS Independent",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3 :: Only",
+  "Topic :: Software Development :: Version Control :: Git",
+]
+dependencies = []
+
+[project.scripts]
+gitanalytics = "gitanalytics.cli:main"
+
+[tool.setuptools]
+packages = ["gitanalytics"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

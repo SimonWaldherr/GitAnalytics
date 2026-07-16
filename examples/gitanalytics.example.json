@@ -1,0 +1,114 @@
+{
+  "discovery": {
+    "max_depth": null,
+    "include_hidden": false,
+    "follow_symlinks": false,
+    "nested_repositories": false,
+    "ignore": [
+      ".git",
+      "node_modules",
+      "vendor",
+      ".venv",
+      "venv",
+      "__pycache__",
+      ".tox",
+      ".mypy_cache",
+      ".pytest_cache",
+      ".idea",
+      ".vscode",
+      "target",
+      "dist",
+      "build"
+    ]
+  },
+  "history": {
+    "scope": "local",
+    "refs": [],
+    "since": null,
+    "until": null,
+    "first_parent": false,
+    "include_merges": true,
+    "include_bots": true,
+    "deduplicate_global": false,
+    "activity_timestamp": "author",
+    "timezone": "commit",
+    "respect_mailmap": true,
+    "collect_churn": true,
+    "detect_renames": true,
+    "store_file_details": true,
+    "store_subjects": false,
+    "collect_tree": true,
+    "collect_releases": true,
+    "collect_remote_hosts": true,
+    "max_commits_per_repository": null
+  },
+  "identity": {
+    "aliases": [
+      {
+        "name": "Max Mustermann",
+        "email": "max@example.com",
+        "match_emails": [
+          "max@old-company.example",
+          "*+max@users.noreply.github.com"
+        ],
+        "match_names": [
+          "M. Mustermann",
+          "maxm"
+        ]
+      }
+    ],
+    "bot_patterns": [
+      "(?i)\\[bot\\]",
+      "(?i)(^|[\\s._-])bot($|[\\s@._-])",
+      "(?i)dependabot",
+      "(?i)renovate",
+      "(?i)github-actions"
+    ]
+  },
+  "work_time": {
+    "working_days": [
+      0,
+      1,
+      2,
+      3,
+      4
+    ],
+    "start_hour": 8,
+    "end_hour": 18
+  },
+  "privacy": {
+    "include_absolute_paths": false,
+    "show_emails": true,
+    "anonymize_authors": false
+  },
+  "report": {
+    "title": "GitAnalytics",
+    "top_n": 15,
+    "timeline_months": 60,
+    "quiet_after_days": 90,
+    "dormant_after_days": 365
+  },
+  "network": {
+    "enabled": false,
+    "reference_names": [],
+    "max_display_nodes": 500,
+    "exclude_service_accounts": true,
+    "ignored_account_patterns": [
+      "(?i)dependabot",
+      "(?i)renovate",
+      "(?i)github-actions",
+      "(?i)gitlab-ci",
+      "(?i)codex",
+      "(?i)claude",
+      "(?i)copilot",
+      "(?i)\\[bot\\]"
+    ],
+    "min_commits_per_author_repository": 2,
+    "max_contribution_gap_days": 365,
+    "require_remote_reference": true
+  },
+  "performance": {
+    "git_timeout_seconds": 900,
+    "sqlite_batch_size": 500
+  }
+}
