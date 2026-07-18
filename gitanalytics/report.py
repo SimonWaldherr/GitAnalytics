@@ -90,7 +90,7 @@ a { color:var(--accent); }
 .card h3 { margin:0 0 4px; font-size:15px; }
 .card .sub { color:var(--muted); font-size:12px; margin-bottom:13px; }
 .kpi { padding:15px 16px; }
-.kpi .label { color:var(--muted); font-size:11px; text-transform:uppercase; letter-spacing:.055em; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.kpi .label { color:var(--muted); font-size:11px; text-transform:uppercase; letter-spacing:.055em; overflow-wrap:anywhere; }
 .kpi .value { margin-top:5px; font-size:25px; font-weight:750; letter-spacing:-.025em; }
 .kpi .detail { color:var(--muted); font-size:11px; min-height:17px; }
 .stat-row { display:grid; grid-template-columns:repeat(auto-fit,minmax(130px,1fr)); gap:10px; }
@@ -133,6 +133,9 @@ a { color:var(--accent); }
 table { width:100%; border-collapse:collapse; font-size:12px; }
 th,td { padding:9px 10px; border-bottom:1px solid var(--border); text-align:left; white-space:nowrap; }
 th { position:sticky; top:0; background:var(--panel-2); color:var(--muted); cursor:pointer; user-select:none; z-index:2; }
+th[aria-sort="ascending"],th[aria-sort="descending"] { color:var(--text); }
+th .sort-ind { display:inline-block; width:1em; color:var(--muted); }
+th[aria-sort] .sort-ind { color:var(--accent); }
 tbody tr:hover { background:var(--panel-2); }
 tbody tr:last-child td { border-bottom:0; }
 td.num,th.num { text-align:right; font-variant-numeric:tabular-nums; }
@@ -288,13 +291,13 @@ let tableCounter=0;
 function dataTable(rows,columns,options={}){
   if(!rows||!rows.length) return empty(options.empty||'Keine Daten vorhanden.');
   const id='tbl-'+(++tableCounter), limit=options.limit||rows.length;
-  const head=columns.map((c,i)=>`<th scope="col" class="${c.num?'num':''}" data-index="${i}" tabindex="0" role="button" aria-label="${esc(c.label)} sortieren">${esc(c.label)} ↕</th>`).join('');
+  const head=columns.map((c,i)=>`<th scope="col" class="${c.num?'num':''}" data-index="${i}" tabindex="0" role="button" aria-label="${esc(c.label)} sortieren">${esc(c.label)} <span class="sort-ind">↕</span></th>`).join('');
   return `<div class="table-tools"><input class="search" aria-label="Tabelle filtern" placeholder="Tabelle durchsuchen …" data-table="${id}"><span class="muted">${num(Math.min(rows.length,limit))} von ${num(rows.length)}</span></div><div class="table-wrap"><table id="${id}"><thead><tr>${head}</tr></thead><tbody>${rows.slice(0,limit).map(r=>rowHtml(r,columns)).join('')}</tbody></table></div>`;
 }
 function rowHtml(row,columns){return `<tr>${columns.map(c=>{let raw=c.get?c.get(row):row[c.key], shown=c.format?c.format(raw,row):esc(cellValue(raw??'')); if(c.crossfilter){const values=c.values?c.values(row):(row.repository_names||[]);shown=`<button type="button" class="table-filter"${crossFilterAttrs(c.crossfilter,raw,values)}>${shown}</button>`;} return `<td class="${c.num?'num':''}" data-sort="${esc(raw??'')}">${shown}</td>`}).join('')}</tr>`;}
 function activateTables(){
   document.querySelectorAll('.search[data-table]').forEach(input=>{if(input.dataset.bound)return;input.dataset.bound='1';input.addEventListener('input',()=>{const q=input.value.toLocaleLowerCase('de'); document.querySelectorAll(`#${input.dataset.table} tbody tr`).forEach(tr=>tr.hidden=!tr.textContent.toLocaleLowerCase('de').includes(q));});});
-  document.querySelectorAll('th[data-index]').forEach(th=>{if(th.dataset.bound)return;th.dataset.bound='1';const sort=()=>{const table=th.closest('table'),body=table.tBodies[0],index=Number(th.dataset.index),asc=th.dataset.order!=='asc'; [...body.rows].sort((a,b)=>compare(a.cells[index].dataset.sort,b.cells[index].dataset.sort,asc)).forEach(row=>body.appendChild(row)); th.dataset.order=asc?'asc':'desc';th.setAttribute('aria-sort',asc?'ascending':'descending');};th.addEventListener('click',sort);th.addEventListener('keydown',event=>{if(event.key==='Enter'||event.key===' '){event.preventDefault();sort();}});});
+  document.querySelectorAll('th[data-index]').forEach(th=>{if(th.dataset.bound)return;th.dataset.bound='1';const sort=()=>{const table=th.closest('table'),body=table.tBodies[0],index=Number(th.dataset.index),asc=th.dataset.order!=='asc'; [...body.rows].sort((a,b)=>compare(a.cells[index].dataset.sort,b.cells[index].dataset.sort,asc)).forEach(row=>body.appendChild(row)); table.querySelectorAll('th[data-index]').forEach(other=>{if(other===th)return;other.dataset.order='';other.removeAttribute('aria-sort');const otherInd=other.querySelector('.sort-ind');if(otherInd)otherInd.textContent='↕';}); th.dataset.order=asc?'asc':'desc';th.setAttribute('aria-sort',asc?'ascending':'descending');const ind=th.querySelector('.sort-ind');if(ind)ind.textContent=asc?'↑':'↓';};th.addEventListener('click',sort);th.addEventListener('keydown',event=>{if(event.key==='Enter'||event.key===' '){event.preventDefault();sort();}});});
   document.querySelectorAll('[data-crossfilter]').forEach(node=>{if(node.dataset.bound)return;node.dataset.bound='1';const filter=event=>{const kind=node.dataset.crossfilter;if(kind)applyCrossFilter(kind,node.dataset.value,event,node.dataset.values);};node.addEventListener('click',filter);node.addEventListener('keydown',event=>{if(event.key==='Enter'||event.key===' '){event.preventDefault();filter(event);}});});
 }
 function compare(a,b,asc){const na=Number(a),nb=Number(b); let result=(!Number.isNaN(na)&&!Number.isNaN(nb)&&a!==''&&b!=='')?na-nb:String(a).localeCompare(String(b),'de',{numeric:true,sensitivity:'base'}); return asc?result:-result;}
