@@ -355,14 +355,14 @@ class IntegrationTests(unittest.TestCase):
             0,
         )
         database = self.output / "data" / "gitanalytics.sqlite3"
-        with _query_connection(database) as connection:
+        with contextlib.closing(_query_connection(database)) as connection:
             count = connection.execute("SELECT COUNT(*) FROM v_commits").fetchone()[0]
             self.assertEqual(count, 2)
             with self.assertRaises(sqlite3.DatabaseError):
                 connection.execute("UPDATE repositories SET display_name = 'changed'")
 
         attached = self.base / "must-not-exist.sqlite3"
-        with _query_connection(database) as connection:
+        with contextlib.closing(_query_connection(database)) as connection:
             with self.assertRaises(sqlite3.DatabaseError):
                 connection.execute(f"ATTACH DATABASE '{attached.as_posix()}' AS external")
         self.assertFalse(attached.exists())

@@ -19,6 +19,14 @@ class ReportTests(unittest.TestCase):
         decoded = json.loads(payload)
         self.assertEqual(decoded["meta"]["title"], "</script><script>alert(1)</script>")
 
+    def test_sortable_tables_expose_sort_state(self) -> None:
+        html = render_html({
+            "meta": {}, "summary": {}, "insights": {}, "activity": {}, "contributors": {},
+            "repositories": [], "code": {}, "releases": {}, "quality": {},
+        })
+        self.assertIn('class="sort-ind">↕</span>', html)
+        self.assertIn("th.setAttribute('aria-sort',asc?'ascending':'descending')", html)
+
 
 if __name__ == "__main__":
     unittest.main()
