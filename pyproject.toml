@@ -20,7 +20,9 @@ classifiers = [
   "Programming Language :: Python :: 3 :: Only",
   "Topic :: Software Development :: Version Control :: Git",
 ]
-dependencies = []
+dependencies = [
+  "tzdata; platform_system == 'Windows'",
+]
 
 [project.scripts]
 gitanalytics = "gitanalytics.cli:main"

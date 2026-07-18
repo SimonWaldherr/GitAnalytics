@@ -156,7 +156,7 @@ class IntegrationTests(unittest.TestCase):
             ]
         )
         self.assertEqual(code, 0)
-        with sqlite3.connect(self.output / "data" / "gitanalytics.sqlite3") as connection:
+        with contextlib.closing(sqlite3.connect(self.output / "data" / "gitanalytics.sqlite3")) as connection:
             row = connection.execute(
                 "SELECT repositories_scanned, repositories_cached FROM runs ORDER BY id DESC LIMIT 1"
             ).fetchone()
@@ -276,7 +276,7 @@ class IntegrationTests(unittest.TestCase):
             self.invoke(["analyze", str(clones), "--output", str(output), "--config", str(config), "--quiet"]),
             0,
         )
-        with sqlite3.connect(output / "data" / "gitanalytics.sqlite3") as connection:
+        with contextlib.closing(sqlite3.connect(output / "data" / "gitanalytics.sqlite3")) as connection:
             trusted, untrusted = connection.execute(
                 "SELECT SUM(is_trusted), SUM(CASE WHEN is_trusted = 0 THEN 1 ELSE 0 END) FROM commits"
             ).fetchone()
@@ -296,7 +296,7 @@ class IntegrationTests(unittest.TestCase):
         )
         report = json.loads((self.output / "data" / "report.json").read_text(encoding="utf-8"))
         self.assertEqual(report["summary"]["repositories"], 0)
-        with sqlite3.connect(self.output / "data" / "gitanalytics.sqlite3") as connection:
+        with contextlib.closing(sqlite3.connect(self.output / "data" / "gitanalytics.sqlite3")) as connection:
             self.assertEqual(connection.execute("SELECT COUNT(*) FROM repositories").fetchone()[0], 0)
 
     def test_fetch_and_sync_only_touch_registered_bare_clones(self) -> None:
