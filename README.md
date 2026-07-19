@@ -50,11 +50,15 @@ Im HTML-Bericht stehen oberhalb aller Seiten Filter für den letzten Bearbeitung
 
 Alle Visualisierungen mit einer Repository-Zuordnung können ebenfalls als Filter dienen: Ein Klick ersetzt die zugrunde liegende Repository-Auswahl, Shift, Ctrl oder Cmd kombiniert sie. Das gilt auch für Autoren-, Commit-Typ- und Zeit-Elemente; sie wählen die Repositories, aus denen der jeweilige Wert stammt, statt Personen als Leistungsfilter zu behandeln. Der Hinweis neben der Filterleiste zeigt die aktuell verbleibende Repository-Anzahl.
 
+Tabellen lassen sich per Maus oder Tastatur nach jeder Spalte sortieren. Die aktive Sortierrichtung wird sichtbar und über `aria-sort` vermittelt, damit sie auch mit Screenreadern nachvollziehbar bleibt.
+
 ## Voraussetzungen
 
 - Python 3.10 oder neuer
 - Git im `PATH`
-- keine verpflichtenden Python-Pakete außerhalb der Standardbibliothek
+- bei Installation unter Windows: `tzdata` wird automatisch mitinstalliert, damit IANA-Zeitzonen verfügbar sind
+
+Für einen Aufruf direkt aus einem ausgecheckten Projektordner ohne Installation gilt unter Windows: Wird eine IANA-Zeitzone wie `Europe/Berlin` verwendet, muss `tzdata` zuvor installiert sein (`python -m pip install tzdata`). Die Modi `commit` und `UTC` benötigen es nicht.
 
 ## Schnellstart
 
@@ -84,15 +88,22 @@ Das Makefile schreibt ausschließlich in den angegebenen Ausgabeordner und niema
 ```bash
 make analyze ROOT=~/Projects OUTPUT=./gitanalytics-report
 make refresh ROOT=~/Projects OUTPUT=./gitanalytics-report
-make serve OUTPUT=./gitanalytics-report
+make report OUTPUT=./gitanalytics-report
+make serve OUTPUT=./gitanalytics-report PORT=8765
 make fetch SOURCES=~/GitAnalytics/sources URL=https://github.com/organisation/projekt.git
 make fetch-account FORGE=github ACCOUNT=mein-name SOURCES=~/GitAnalytics/sources
 make fetch-starred FORGE=github ACCOUNT=mein-name SOURCES=~/GitAnalytics/sources
 make sync SOURCES=~/GitAnalytics/sources
+make profile OUTPUT=./gitanalytics-report GITHUB_USER=mein-github-name PROFILE_OUTPUT=./gitanalytics-profile-review
+make init-config CONFIG_PATH=./gitanalytics.json
+make doctor
+make query OUTPUT=./gitanalytics-report SQL="SELECT repository, commits FROM v_repository_summary ORDER BY commits DESC" FORMAT=table
 make test
 ```
 
 `refresh` verwendet zusätzlich `data/repository-index.json`: Der Index vergleicht lokal `HEAD`, lose Refs, `packed-refs` und das Reflog. Nur bei veränderten Git-Metadaten startet GitAnalytics einen Git-Prozess und liest den Snapshot erneut. Der Index befindet sich ausschließlich im Ausgabeordner.
+
+`report`, `profile` und `query` verwenden standardmäßig `DATABASE=$(OUTPUT)/data/gitanalytics.sqlite3`; eine abweichende Datenbank lässt sich direkt über `DATABASE=` überschreiben, etwa `make query DATABASE=./andere.sqlite3 SQL="..."`.
 
 ## Optionale Netzwerkanalyse
 
@@ -471,17 +482,23 @@ python -m unittest discover -s tests -v
 
 ```text
 gitanalytics/
-├── analytics.py    SQL-basierte Kennzahlen
-├── cli.py          Kommandozeile und Orchestrierung
-├── config.py       Konfiguration, Aliase und Validierung
-├── database.py     SQLite-Schema und Cache
-├── discovery.py    Repository-Erkennung
-├── exports.py      JSON-, CSV- und Manifest-Export
-├── git_reader.py   read-only Git-Zugriff und Streaming-Parser
-├── languages.py    Pfadbasierte Sprachklassifikation
-├── models.py       Datenmodelle
-├── report.py       eigenständiger Offline-HTML-Bericht
-└── util.py         Hilfsfunktionen
+├── analytics.py      SQL-basierte Kennzahlen
+├── cli.py            Kommandozeile und Orchestrierung
+├── collaboration.py  optionale Autoren-/Repository-Netzwerkdistanzen
+├── config.py         Konfiguration, Aliase und Validierung
+├── console.py        Terminalausgabe und Tabellenformatierung
+├── database.py       SQLite-Schema und Cache
+├── discovery.py      Repository-Erkennung
+├── exports.py        JSON-, CSV- und Manifest-Export
+├── forge.py          explizite Forge-API-Discovery (GitHub, GitLab, Gitea, Forgejo, Gogs)
+├── git_reader.py     read-only Git-Zugriff und Streaming-Parser
+├── languages.py      Pfadbasierte Sprachklassifikation
+├── models.py         Datenmodelle
+├── privacy.py        fail-closed Repository-Privatsphärenklassifikation
+├── profile.py        fail-closed öffentliches Profilpaket
+├── report.py         eigenständiger Offline-HTML-Bericht
+├── sources.py        verwaltete Bare-Clone-Quellenregistrierung
+└── util.py           Hilfsfunktionen
 ```
 
 Weitere Details stehen in `docs/ARCHITECTURE.md`, `docs/METRICS.md` und im erzeugten `DATA_DICTIONARY.md`.
