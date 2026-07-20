@@ -23,6 +23,7 @@ from .exports import (
     export_csv_bundle,
     write_data_dictionary,
     write_json_report,
+    write_markdown_report,
     write_manifest,
 )
 from .forge import ForgeError, discover_account_repositories, discover_starred_repositories
@@ -122,11 +123,13 @@ def _write_outputs(
     html: bool,
     json_output: bool,
     csv_output: bool,
+    markdown: bool,
 ) -> list[Path]:
     files: list[Path] = []
     html_path = output / "index.html"
     json_path = output / "data" / "report.json"
     csv_path = output / "data" / "csv"
+    markdown_path = output / "REPORT.md"
     if html:
         write_html(html_path, report)
         files.append(html_path)
@@ -141,6 +144,11 @@ def _write_outputs(
         files.extend(export_csv_bundle(csv_path, report))
     elif csv_path.exists():
         shutil.rmtree(csv_path)
+    if markdown:
+        write_markdown_report(markdown_path, report)
+        files.append(markdown_path)
+    elif markdown_path.exists():
+        markdown_path.unlink()
     atomic_write_json(output / "data" / "effective-config.json", config)
     files.append(output / "data" / "effective-config.json")
     write_data_dictionary(output / "DATA_DICTIONARY.md")
@@ -329,6 +337,7 @@ def command_analyze(args: argparse.Namespace) -> int:
             html=not args.no_html,
             json_output=not args.no_json,
             csv_output=not args.no_csv,
+            markdown=not args.no_markdown,
         )
     atomic_write_json(index_path, {
         "scan_signature": signature,
@@ -366,6 +375,7 @@ def command_report(args: argparse.Namespace) -> int:
         generated = _write_outputs(
             output, report, config,
             html=not args.no_html, json_output=not args.no_json, csv_output=not args.no_csv,
+            markdown=not args.no_markdown,
         )
     bundled_database = output / "data" / "gitanalytics.sqlite3"
     if bundled_database.resolve() != database_path:
@@ -641,6 +651,7 @@ def _add_output_options(parser: argparse.ArgumentParser) -> None:
     parser.add_argument("--no-html", action="store_true", help="Keinen HTML-Bericht schreiben.")
     parser.add_argument("--no-json", action="store_true", help="Keinen JSON-Snapshot schreiben.")
     parser.add_argument("--no-csv", action="store_true", help="Keine CSV-Dateien schreiben.")
+    parser.add_argument("--no-markdown", action="store_true", help="Keinen kompakten Markdown-Bericht schreiben.")
     parser.add_argument("--open", action="store_true", help="HTML-Bericht nach dem Lauf im Browser öffnen.")
 
 

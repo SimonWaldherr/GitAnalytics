@@ -142,7 +142,9 @@ class IntegrationTests(unittest.TestCase):
         self.assertEqual(report["contributors"]["rows"][0]["repository_names"], ["alpha"])
         self.assertEqual(report["code"]["commit_types"][0]["repository_names"], ["alpha"])
         self.assertTrue((self.output / "index.html").is_file())
+        self.assertTrue((self.output / "REPORT.md").is_file())
         self.assertTrue((self.output / "data" / "csv" / "repositories.csv").is_file())
+        self.assertIn("## Repositories", (self.output / "REPORT.md").read_text(encoding="utf-8"))
 
         html = (self.output / "index.html").read_text(encoding="utf-8")
         self.assertIn('id="gitanalytics-data"', html)

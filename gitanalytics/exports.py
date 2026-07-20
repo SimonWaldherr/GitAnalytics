@@ -6,7 +6,7 @@ import json
 from pathlib import Path
 from typing import Any, Iterable, Mapping, Sequence
 
-from .util import atomic_write_json, atomic_write_text, iso_now
+from .util import atomic_write_json, atomic_write_text, human_int, human_percent, iso_now
 
 
 def _csv_value(value: Any) -> Any:
@@ -74,6 +74,59 @@ def export_csv_bundle(directory: Path, report: dict[str, Any]) -> list[Path]:
 
 def write_json_report(path: Path, report: dict[str, Any]) -> None:
     atomic_write_json(path, report)
+
+
+def _markdown_cell(value: Any) -> str:
+    """Render an untrusted report value safely inside a Markdown table cell."""
+    return str(value if value is not None else "–").replace("|", "\\|").replace("\n", " ")
+
+
+def write_markdown_report(path: Path, report: Mapping[str, Any]) -> None:
+    """Write a compact, portable report suitable for a README, wiki, or ticket.
+
+    This contains only existing report data; the HTML report remains the place for
+    interactive filtering and full detail.
+    """
+    meta = report.get("meta", {})
+    summary = report.get("summary", {})
+    quality = report.get("quality", {})
+    lines = [
+        f"# {_markdown_cell(meta.get('title') or 'GitAnalytics-Bericht')}", "",
+        f"Erzeugt: {_markdown_cell(meta.get('generated_at'))}", "", "## Überblick", "",
+        "| Kennzahl | Wert |", "| --- | ---: |",
+    ]
+    metrics = (
+        ("Repositories", human_int(summary.get("repositories"))),
+        ("Repositories mit Commits", human_int(summary.get("repositories_with_commits"))),
+        ("Commits", human_int(summary.get("commits"))),
+        ("Autor:innen", human_int(summary.get("authors"))),
+        ("Churn", human_int(summary.get("churn"))),
+        ("Codezeilen (HEAD)", human_int(summary.get("code_lines"))),
+        ("Kommentar-Dichte", human_percent(summary.get("comment_density"))),
+        ("Letzter Commit", summary.get("last_commit") or "–"),
+        ("Inaktive Repositories", human_int(summary.get("dormant_repositories"))),
+    )
+    lines.extend(f"| {label} | {_markdown_cell(value)} |" for label, value in metrics)
+    repositories = list(report.get("repositories", []))
+    if repositories:
+        lines.extend(["", "## Repositories", "", "| Repository | Commits | Autor:innen | Letzter Commit | Status |", "| --- | ---: | ---: | --- | --- |"])
+        for repository in repositories:
+            lines.append("| {name} | {commits} | {authors} | {last} | {status} |".format(
+                name=_markdown_cell(repository.get("name")), commits=human_int(repository.get("commits")),
+                authors=human_int(repository.get("authors")), last=_markdown_cell(repository.get("last_commit") or "–"),
+                status=_markdown_cell(repository.get("activity_status") or repository.get("status")),
+            ))
+    contributors = list(report.get("contributors", {}).get("rows", []))
+    if contributors:
+        lines.extend(["", "## Beitragende", "", "| Name | Commits | Repositories |", "| --- | ---: | ---: |"])
+        for contributor in contributors[:10]:
+            lines.append(f"| {_markdown_cell(contributor.get('name'))} | {human_int(contributor.get('commits'))} | {human_int(contributor.get('repositories'))} |")
+    warnings = list(quality.get("warnings", []))
+    if warnings:
+        lines.extend(["", "## Hinweise", ""])
+        lines.extend(f"- {_markdown_cell(warning)}" for warning in warnings)
+    lines.extend(["", "_Git-Telemetrie ist kein Maß für individuelle Leistung oder Qualität._", ""])
+    atomic_write_text(path, "\n".join(lines))
 
 
 DATA_DICTIONARY = """# GitAnalytics data dictionary

@@ -1,6 +1,6 @@
 # GitAnalytics
 
-GitAnalytics ist ein lokales, read-only Analysewerkzeug für eine Sammlung von Git-Repositories. Es durchsucht einen oder mehrere Stammordner, liest Git-Metadaten und die Inhalte der versionierten `HEAD`-Blobs, speichert einen wiederverwendbaren Snapshot in SQLite und erzeugt daraus einen vollständig offline nutzbaren HTML-Bericht sowie JSON- und CSV-Exporte.
+GitAnalytics ist ein lokales, read-only Analysewerkzeug für eine Sammlung von Git-Repositories. Es durchsucht einen oder mehrere Stammordner, liest Git-Metadaten und die Inhalte der versionierten `HEAD`-Blobs, speichert einen wiederverwendbaren Snapshot in SQLite und erzeugt daraus einen vollständig offline nutzbaren HTML-Bericht sowie Markdown-, JSON- und CSV-Exporte.
 
 Die normale Analyse benötigt keine GitHub-, GitLab- oder Cloud-Verbindung. Sie führt keinen Fetch aus und verändert weder Worktrees noch `.git`-Verzeichnisse. Die separat opt-inbare Quellenfunktion arbeitet ausschließlich in neu angelegten, registrierten Bare-Clones.
 
@@ -203,6 +203,7 @@ Der Bericht besteht aus:
 ```text
 <output>/
 ├── index.html
+├── REPORT.md
 ├── DATA_DICTIONARY.md
 ├── MANIFEST.txt
 └── data/
@@ -219,6 +220,8 @@ Der Bericht besteht aus:
 ```
 
 `gitanalytics.sqlite3` ist zugleich Cache und BI-Datenbasis. Unveränderte Repositories werden bei späteren Läufen anhand der relevanten Refs, `.mailmap`, shallow-Metadaten und Scan-Konfiguration wiederverwendet.
+
+`REPORT.md` ist eine kompakte, portable Zusammenfassung für READMEs, Wikis oder Tickets. Sie enthält ausschließlich Daten des lokalen Snapshots und kann mit `--no-markdown` ausgelassen werden.
 
 ## Typische Aufrufe
 

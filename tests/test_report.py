@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 import unittest
 
+from gitanalytics.exports import write_markdown_report
 from gitanalytics.report import render_html
 
 
@@ -26,6 +27,24 @@ class ReportTests(unittest.TestCase):
         })
         self.assertIn('class="sort-ind">↕</span>', html)
         self.assertIn("th.setAttribute('aria-sort',asc?'ascending':'descending')", html)
+
+    def test_markdown_report_escapes_table_values(self) -> None:
+        from pathlib import Path
+        from tempfile import TemporaryDirectory
+
+        with TemporaryDirectory() as directory:
+            target = Path(directory) / "REPORT.md"
+            write_markdown_report(target, {
+                "meta": {"title": "A | B", "generated_at": "2026-07-20T10:00:00+00:00"},
+                "summary": {"repositories": 1, "commits": 2, "authors": 1, "comment_density": 0.5},
+                "repositories": [{"name": "api|core", "commits": 2, "authors": 1, "activity_status": "active"}],
+                "contributors": {"rows": [{"name": "Alice", "commits": 2, "repositories": 1}]},
+                "quality": {"warnings": ["Keine externen Daten"]},
+            })
+            content = target.read_text(encoding="utf-8")
+        self.assertIn("# A \\| B", content)
+        self.assertIn("api\\|core", content)
+        self.assertIn("## Beitragende", content)
 
 
 if __name__ == "__main__":

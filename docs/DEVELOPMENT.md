@@ -15,7 +15,7 @@ GitAnalytics trennt die Anwendung in klar abgegrenzte Schichten. Neue Funktionen
 | `forge.py` | begrenzte, explizite Account-Abfrage über Forge-APIs |
 | `sources.py` | Registry und Synchronisation ausschließlich tool-eigener Bare-Clones |
 | `report.py` | Offline-HTML, I18N, ARIA und clientseitige Filter |
-| `exports.py` | JSON-, CSV-, Manifest- und Datenwörterbuch-Ausgaben |
+| `exports.py` | Markdown-, JSON-, CSV-, Manifest- und Datenwörterbuch-Ausgaben |
 
 ## Regeln für Änderungen
 
