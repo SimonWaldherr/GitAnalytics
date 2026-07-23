@@ -11,10 +11,14 @@ PROFILE_OUTPUT ?= ./gitanalytics-profile-review
 CONFIG_PATH ?= gitanalytics.json
 SQL ?=
 FORMAT ?= table
+MAX_SCAN_ERRORS ?=
+MAX_FAILED_REPOSITORIES ?=
+MAX_DORMANT_REPOSITORIES ?=
+MAX_DAYS_SINCE_LAST_COMMIT ?=
 BIND ?= 127.0.0.1
 PORT ?= 8765
 
-.PHONY: help analyze refresh report fetch fetch-account fetch-starred sync profile init-config doctor query serve test clean
+.PHONY: help analyze refresh report fetch fetch-account fetch-starred sync profile init-config doctor query check serve test clean
 
 help:
 	@echo "make analyze ROOT=/pfad/zu/repos OUTPUT=./report"
@@ -28,6 +32,7 @@ help:
 	@echo "make init-config CONFIG_PATH=./gitanalytics.json  # Beispielkonfiguration schreiben"
 	@echo "make doctor                                        # Python-, SQLite- und Git-Diagnose"
 	@echo "make query OUTPUT=./report SQL=\"SELECT ...\" FORMAT=table"
+	@echo "make check OUTPUT=./report MAX_SCAN_ERRORS=0"
 	@echo "make serve OUTPUT=./report PORT=8765"
 	@echo "make test"
 
@@ -63,6 +68,9 @@ doctor:
 
 query:
 	$(PYTHON) -m gitanalytics query "$(DATABASE)" $(if $(SQL),"$(SQL)",) --format "$(FORMAT)"
+
+check:
+	$(PYTHON) -m gitanalytics check "$(OUTPUT)/data/report.json" $(if $(MAX_SCAN_ERRORS),--max-scan-errors $(MAX_SCAN_ERRORS)) $(if $(MAX_FAILED_REPOSITORIES),--max-failed-repositories $(MAX_FAILED_REPOSITORIES)) $(if $(MAX_DORMANT_REPOSITORIES),--max-dormant-repositories $(MAX_DORMANT_REPOSITORIES)) $(if $(MAX_DAYS_SINCE_LAST_COMMIT),--max-days-since-last-commit $(MAX_DAYS_SINCE_LAST_COMMIT))
 
 serve:
 	$(PYTHON) -m gitanalytics serve "$(OUTPUT)" --bind "$(BIND)" --port "$(PORT)"

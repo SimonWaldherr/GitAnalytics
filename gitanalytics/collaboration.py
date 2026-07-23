@@ -55,6 +55,7 @@ def build_collaboration(
     minimum, gap = int(network["min_commits_per_author_repository"]), int(network["max_contribution_gap_days"])
     by_author: dict[str, list[tuple[int, str, str, str]]] = defaultdict(list)
     by_repo: dict[int, list[tuple[str, str, str]]] = defaultdict(list)
+    repository_names: dict[int, str] = {}
     commits: dict[str, int] = defaultdict(int)
     excluded = 0
     for row in memberships:
@@ -67,6 +68,7 @@ def build_collaboration(
         first, last = str(row["first_date"]), str(row["last_date"])
         by_author[author].append((repo_id, str(row["repository"]), first, last))
         by_repo[repo_id].append((author, first, last))
+        repository_names[repo_id] = str(row["repository"])
         commits[author] += int(row["commits"] or 0)
 
     targets = {name.casefold() for name in network["reference_names"]}
@@ -110,12 +112,28 @@ def build_collaboration(
             }),
         })
     rows.sort(key=lambda row: (row["distance"] is None, row["distance"] if row["distance"] is not None else 10**9, -row["commits"], row["author"].casefold()))
+    direct_pairs: list[dict[str, Any]] = []
+    for repo_id, members in by_repo.items():
+        repository = repository_names.get(repo_id, "Unbekannt")
+        for index, (left, left_first, left_last) in enumerate(members):
+            for right, right_first, right_last in members[index + 1:]:
+                if dt.date.fromisoformat(right_first) > dt.date.fromisoformat(left_last) + dt.timedelta(days=gap):
+                    continue
+                if dt.date.fromisoformat(left_first) > dt.date.fromisoformat(right_last) + dt.timedelta(days=gap):
+                    continue
+                direct_pairs.append({
+                    "author": names_by_key.get(left, "Unbekannt"), "co_author": names_by_key.get(right, "Unbekannt"),
+                    "repository": repository, "commits": commits[left] + commits[right],
+                    "repository_names": [repository],
+                })
+    direct_pairs.sort(key=lambda row: (-row["commits"], row["author"].casefold(), row["co_author"].casefold()))
     maximum = int(network["max_display_nodes"])
     return {
         "reference_names": network["reference_names"],
         "references_found": [names_by_key[key] for key in references],
         "authors": len(by_author), "connected_authors": len(distance),
         "max_distance": max(distance.values(), default=None), "rows": rows[:maximum],
+        "direct_pairs": direct_pairs[:maximum],
         "truncated": len(rows) > maximum, "excluded_memberships": excluded,
         "method": "Autoren sind über gemeinsam bearbeitete Repositories verbunden; die Distanz ist kein Nachweis persönlicher Bekanntschaft.",
         "enabled": True,

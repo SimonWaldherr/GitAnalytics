@@ -98,12 +98,25 @@ make profile OUTPUT=./gitanalytics-report GITHUB_USER=mein-github-name PROFILE_O
 make init-config CONFIG_PATH=./gitanalytics.json
 make doctor
 make query OUTPUT=./gitanalytics-report SQL="SELECT repository, commits FROM v_repository_summary ORDER BY commits DESC" FORMAT=table
+make check OUTPUT=./gitanalytics-report MAX_SCAN_ERRORS=0
 make test
 ```
 
 `refresh` verwendet zusätzlich `data/repository-index.json`: Der Index vergleicht lokal `HEAD`, lose Refs, `packed-refs` und das Reflog. Nur bei veränderten Git-Metadaten startet GitAnalytics einen Git-Prozess und liest den Snapshot erneut. Der Index befindet sich ausschließlich im Ausgabeordner.
 
 `report`, `profile` und `query` verwenden standardmäßig `DATABASE=$(OUTPUT)/data/gitanalytics.sqlite3`; eine abweichende Datenbank lässt sich direkt über `DATABASE=` überschreiben, etwa `make query DATABASE=./andere.sqlite3 SQL="..."`.
+
+## Qualitätsgrenzen für CI
+
+`check` prüft einen vorhandenen JSON-Snapshot, ohne Repositories erneut zu lesen. Jede angegebene Grenze muss erfüllt sein; bei Überschreitung endet der Befehl mit Exit-Code `2` und eignet sich damit für CI-Pipelines:
+
+```bash
+gitanalytics check ./gitanalytics-report/data/report.json \
+  --max-scan-errors 0 --max-failed-repositories 0 \
+  --max-days-since-last-commit 30 --format json
+```
+
+Verfügbar sind Grenzen für Scanfehler, fehlgeschlagene Repositories, inaktive Repositories und das Alter des letzten Commits. Ohne mindestens eine Grenze wird keine Prüfung ausgeführt.
 
 ## Optionale Netzwerkanalyse
 
@@ -229,6 +242,26 @@ Alle lokalen Branches und Tags, der Standardmodus:
 
 ```bash
 gitanalytics analyze ~/Projects --scope local
+```
+
+Nur die vorhandenen lokalen Standardbranches `main` und `master` auswerten (andere Feature- und Release-Branches bleiben außen vor):
+
+```bash
+gitanalytics analyze ~/Projects --main-branches
+```
+
+Der Filter wird pro Repository aufgelöst; Repositories ohne einen dieser Branches werden mit leerer Commit-Historie aufgenommen. `--main-branches` kann nicht mit expliziten `--ref`-Angaben kombiniert werden.
+
+Im Offline-Bericht steht derselbe Filter in der Filterleiste als **Branch (HEAD/Standard)** bereit. Er schränkt Dashboard und Repository-Matrix auf Projekte ein, deren aktuell ausgecheckter oder konfigurierter Standardbranch `main` beziehungsweise `master` ist. Für eine branch-spezifische Commit-Historie wird der Bericht mit `--main-branches` erzeugt.
+
+Die GitHub-artige Tages-Heatmap für die letzten 365 Tage ist im Bericht über **Metrik** umschaltbar: Commits, Additionen, Deletionen, Churn, aktive Repositories oder Autor:innen. Ein Klick auf einen Tag übernimmt die zugehörigen Repositories in die bestehenden Dashboard-Filter.
+
+### Commit-Nachrichten prüfen
+
+Commit-Betreffzeilen werden aus Datenschutzgründen nicht standardmäßig gespeichert. Mit `--store-subjects` erscheint im Bereich **Code & Hotspots** eine durchsuch- und sortierbare Liste mit Nachricht, Autor, Repository, Typ und Scope:
+
+```bash
+gitanalytics analyze ~/Projects --store-subjects
 ```
 
 Nur der aktuell ausgecheckte Branch:

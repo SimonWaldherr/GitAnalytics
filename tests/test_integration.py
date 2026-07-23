@@ -151,6 +151,13 @@ class IntegrationTests(unittest.TestCase):
         self.assertNotIn("https://", html)
         self.assertNotIn("http://", html)
 
+        self.assertEqual(self.invoke([
+            "check", str(self.output / "data" / "report.json"), "--max-scan-errors", "0",
+        ]), 0)
+        self.assertEqual(self.invoke([
+            "check", str(self.output / "data" / "report.json"), "--max-dormant-repositories", "0",
+        ]), 2)
+
         code = self.invoke(
             [
                 "analyze", str(self.root), "--output", str(self.output),
@@ -164,6 +171,31 @@ class IntegrationTests(unittest.TestCase):
             ).fetchone()
         self.assertEqual(row, (0, 1))
         self.assertEqual(before, snapshot(self.repo))
+
+    def test_main_branches_filter_excludes_feature_branch_history(self) -> None:
+        run([GIT, "checkout", "-qb", "feature/extra"], cwd=self.repo)
+        (self.repo / "feature.txt").write_text("only feature\n", encoding="utf-8")
+        run([GIT, "add", "feature.txt"], cwd=self.repo)
+        run([GIT, "commit", "-qm", "feat: feature only"], cwd=self.repo)
+
+        all_output = self.base / "all-branches"
+        main_output = self.base / "main-branches"
+        self.assertEqual(self.invoke(["analyze", str(self.root), "--output", str(all_output), "--quiet"]), 0)
+        self.assertEqual(self.invoke([
+            "analyze", str(self.root), "--output", str(main_output), "--main-branches", "--quiet",
+        ]), 0)
+        all_report = json.loads((all_output / "data" / "report.json").read_text(encoding="utf-8"))
+        main_report = json.loads((main_output / "data" / "report.json").read_text(encoding="utf-8"))
+        self.assertEqual(all_report["summary"]["commits"], 3)
+        self.assertEqual(main_report["summary"]["commits"], 2)
+
+    def test_stored_commit_subjects_are_available_in_the_report(self) -> None:
+        self.assertEqual(self.invoke([
+            "analyze", str(self.root), "--output", str(self.output), "--store-subjects", "--quiet",
+        ]), 0)
+        report = json.loads((self.output / "data" / "report.json").read_text(encoding="utf-8"))
+        self.assertTrue(report["code"]["subjects_available"])
+        self.assertIn("feat(core): first #12", [row["subject"] for row in report["code"]["recent_subjects"]])
 
     def test_report_can_be_anonymized_without_rescan(self) -> None:
         self.assertEqual(

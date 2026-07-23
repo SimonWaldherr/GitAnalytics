@@ -832,6 +832,15 @@ class Analytics:
             FROM effective_commits
             """
         ) or {}
+        recent_subjects = self.db.rows(
+            """
+            SELECT r.display_name AS repository, c.hash, c.author_name AS author,
+                   c.activity_at, c.subject, c.message_type, c.message_scope
+            FROM effective_commits c JOIN repositories r ON r.id = c.repo_id
+            WHERE c.subject IS NOT NULL AND TRIM(c.subject) <> ''
+            ORDER BY c.activity_at DESC, c.hash DESC LIMIT 500
+            """
+        )
         commits = int(aggregate.get("commits") or 0)
         return {
             "commit_types": commit_types,
@@ -854,6 +863,8 @@ class Analytics:
             "comment_types": comment_types,
             "hot_files": hot_files,
             "top_directories": directories,
+            "recent_subjects": recent_subjects,
+            "subjects_available": bool(recent_subjects),
         }
 
     def _releases(self) -> dict[str, Any]:

@@ -104,6 +104,11 @@ def _apply_overrides(config: dict[str, Any], args: argparse.Namespace) -> dict[s
         _set(config, "history", key, getattr(args, key, None))
     if getattr(args, "refs", None):
         config["history"]["refs"] = list(args.refs)
+    if getattr(args, "main_branches", None):
+        if getattr(args, "refs", None):
+            raise UserError("--main-branches kann nicht zusammen mit --ref verwendet werden.")
+        config["history"]["main_branches"] = True
+        config["history"]["refs"] = []
 
     for key in ("include_absolute_paths", "show_emails", "anonymize_authors"):
         _set(config, "privacy", key, getattr(args, key, None))
@@ -486,6 +491,58 @@ def command_query(args: argparse.Namespace) -> int:
     return 0
 
 
+def _check_limit(
+    results: list[dict[str, Any]], *, name: str, actual: Any, maximum: int | None,
+) -> None:
+    """Append an explicitly requested upper-bound check to a portable result."""
+    if maximum is None:
+        return
+    if not isinstance(actual, int):
+        results.append({"check": name, "actual": actual, "maximum": maximum, "status": "unavailable"})
+        return
+    results.append({
+        "check": name, "actual": actual, "maximum": maximum,
+        "status": "passed" if actual <= maximum else "failed",
+    })
+
+
+def command_check(args: argparse.Namespace) -> int:
+    """Check a report snapshot against explicit operational limits without rescanning."""
+    for value in (
+        args.max_failed_repositories, args.max_scan_errors,
+        args.max_dormant_repositories, args.max_days_since_last_commit,
+    ):
+        if value is not None and value < 0:
+            raise UserError("Prüfgrenzen dürfen nicht negativ sein.")
+    path = args.report.expanduser().resolve()
+    if not path.is_file():
+        raise UserError(f"JSON-Bericht nicht gefunden: {path}")
+    try:
+        report = json.loads(path.read_text(encoding="utf-8"))
+    except json.JSONDecodeError as exc:
+        raise UserError(f"Ungültiger JSON-Bericht: {exc}") from exc
+    if not isinstance(report, dict) or not isinstance(report.get("summary"), dict):
+        raise UserError("Der JSON-Bericht enthält keine GitAnalytics-Zusammenfassung.")
+    summary = report["summary"]
+    quality = report.get("quality") if isinstance(report.get("quality"), dict) else {}
+    errors = quality.get("errors", [])
+    results: list[dict[str, Any]] = []
+    _check_limit(results, name="fehlgeschlagene_repositories", actual=summary.get("failed_repositories"), maximum=args.max_failed_repositories)
+    _check_limit(results, name="scanfehler", actual=len(errors) if isinstance(errors, list) else None, maximum=args.max_scan_errors)
+    _check_limit(results, name="inaktive_repositories", actual=summary.get("dormant_repositories"), maximum=args.max_dormant_repositories)
+    _check_limit(results, name="tage_seit_letztem_commit", actual=summary.get("days_since_last_commit"), maximum=args.max_days_since_last_commit)
+    if not results:
+        raise UserError("Mindestens eine Prüfgrenze angeben.")
+    failed = any(item["status"] != "passed" for item in results)
+    payload = {"report": str(path), "status": "failed" if failed else "passed", "checks": results}
+    if args.format == "json":
+        print(json.dumps(payload, ensure_ascii=False, indent=2))
+    else:
+        rows = [(item["check"], item["actual"], item["maximum"], item["status"]) for item in results]
+        print(format_console_table(("Prüfung", "Ist", "Maximum", "Status"), rows))
+    return 2 if failed else 0
+
+
 def command_serve(args: argparse.Namespace) -> int:
     directory = args.directory.expanduser().resolve()
     if not directory.is_dir():
@@ -680,6 +737,7 @@ def build_parser() -> argparse.ArgumentParser:
 
     analyze.add_argument("--scope", choices=["current", "local", "all"])
     analyze.add_argument("--ref", dest="refs", action="append", help="Explizite Revision; mehrfach verwendbar.")
+    analyze.add_argument("--main-branches", action="store_true", help="Nur vorhandene lokale main- und master-Branches auswerten.")
     analyze.add_argument("--since", help="Git-Zeitgrenze, z. B. 2024-01-01 oder '1 year ago'.")
     analyze.add_argument("--until", help="Git-Zeitgrenze.")
     analyze.add_argument("--first-parent", action=argparse.BooleanOptionalAction, default=None)
@@ -800,6 +858,15 @@ def build_parser() -> argparse.ArgumentParser:
     query.add_argument("--file", type=Path, help="SQL aus Datei lesen.")
     query.add_argument("--format", choices=["table", "json", "csv"], default="table")
     query.set_defaults(func=command_query)
+
+    check = sub.add_parser("check", help="JSON-Snapshot gegen explizite Qualitätsgrenzen prüfen (CI-tauglich).")
+    check.add_argument("report", type=Path, help="Pfad zu data/report.json.")
+    check.add_argument("--max-failed-repositories", type=int, help="Höchstens so viele fehlgeschlagene Repositories zulassen.")
+    check.add_argument("--max-scan-errors", type=int, help="Höchstens so viele Scan- oder Discovery-Fehler zulassen.")
+    check.add_argument("--max-dormant-repositories", type=int, help="Höchstens so viele inaktive Repositories zulassen.")
+    check.add_argument("--max-days-since-last-commit", type=int, help="Maximales Alter des letzten Commits.")
+    check.add_argument("--format", choices=["table", "json"], default="table")
+    check.set_defaults(func=command_check)
 
     serve = sub.add_parser("serve", help="Berichtsordner über einen lokalen HTTP-Server bereitstellen.")
     serve.add_argument("directory", type=Path)

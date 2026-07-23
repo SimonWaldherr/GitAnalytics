@@ -275,7 +275,7 @@ class GitReader:
         git_dir: Path,
     ) -> str:
         history = config["history"]
-        refs = [str(ref) for ref in history.get("refs", [])]
+        refs = self._configured_refs(repository, history)
         if refs:
             ref_data = b""
             for ref in refs:
@@ -413,7 +413,7 @@ class GitReader:
 
     def _revision_arguments(self, probe: RepositoryProbe, config: dict) -> list[str]:
         history = config["history"]
-        refs = [str(ref) for ref in history.get("refs", [])]
+        refs = self._configured_refs(probe.path, history)
         if refs:
             return refs
         if history["scope"] == "current":
@@ -424,6 +424,18 @@ class GitReader:
                 args.append("HEAD")
             return args
         return ["--all"]
+
+    def _configured_refs(self, repository: Path, history: dict) -> list[str]:
+        """Return explicit revisions, resolving the main/master shortcut per repository."""
+        refs = [str(ref) for ref in history.get("refs", [])]
+        if refs or not history.get("main_branches", False):
+            return refs
+        output = self.run_text(
+            repository,
+            ["for-each-ref", "--format=%(refname)", "refs/heads/main", "refs/heads/master"],
+            check=False,
+        )
+        return [line.strip() for line in output.splitlines() if line.strip()]
 
     def untrusted_commit_hashes(self, probe: RepositoryProbe, config: dict) -> set[str]:
         """Return selected commits not reachable from a trusted remote reference.

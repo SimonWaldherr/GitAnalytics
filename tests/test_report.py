@@ -28,6 +28,26 @@ class ReportTests(unittest.TestCase):
         self.assertIn('class="sort-ind">↕</span>', html)
         self.assertIn("th.setAttribute('aria-sort',asc?'ascending':'descending')", html)
 
+    def test_dashboard_offers_main_and_master_branch_filter(self) -> None:
+        html = render_html({
+            "meta": {}, "summary": {}, "insights": {}, "activity": {}, "contributors": {},
+            "repositories": [], "code": {}, "releases": {}, "quality": {},
+        })
+        self.assertIn('id="branch-filter"', html)
+        self.assertIn('option value="main"', html)
+        self.assertIn('option value="master"', html)
+        self.assertIn("function branchMatch(repository)", html)
+
+    def test_calendar_offers_multiple_activity_metrics(self) -> None:
+        html = render_html({
+            "meta": {}, "summary": {}, "insights": {}, "activity": {}, "contributors": {},
+            "repositories": [], "code": {}, "releases": {}, "quality": {},
+        })
+        self.assertIn('id="calendar-metric"', html)
+        self.assertIn('option value="churn"', html)
+        self.assertIn('option value="repositories"', html)
+        self.assertIn("function calendarValue(row,metric)", html)
+
     def test_markdown_report_escapes_table_values(self) -> None:
         from pathlib import Path
         from tempfile import TemporaryDirectory

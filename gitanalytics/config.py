@@ -26,6 +26,7 @@ DEFAULT_CONFIG: dict[str, Any] = {
     "history": {
         "scope": "local",
         "refs": [],
+        "main_branches": False,
         "since": None,
         "until": None,
         "first_parent": False,
@@ -186,6 +187,8 @@ def validate_config(config: dict[str, Any]) -> None:
         raise ConfigError("history.scope muss current, local oder all sein.")
     if not isinstance(history.get("refs"), list):
         raise ConfigError("history.refs muss eine Liste sein.")
+    if not isinstance(history.get("main_branches"), bool):
+        raise ConfigError("history.main_branches muss true oder false sein.")
     if history.get("activity_timestamp") not in {"author", "committer"}:
         raise ConfigError("history.activity_timestamp muss author oder committer sein.")
     maximum = history.get("max_commits_per_repository")
