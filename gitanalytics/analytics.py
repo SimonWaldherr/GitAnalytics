@@ -918,6 +918,15 @@ class Analytics:
         status_counts = defaultdict(int)
         for repo in repositories:
             status_counts[str(repo["activity_status"])] += 1
+        ci_covered = sum(1 for repo in repositories if repo.get("ci_systems"))
+        licensed = sum(1 for repo in repositories if repo.get("licenses"))
+        first_author_dates = self.db.rows(
+            "SELECT author_key, MIN(activity_date) AS first_date FROM effective_commits GROUP BY author_key"
+        )
+        new_authors_30 = sum(
+            1 for row in first_author_dates
+            if row.get("first_date") and dt.date.fromisoformat(str(row["first_date"])) >= self.today - dt.timedelta(days=29)
+        )
         last_date = commit.get("last_commit")
         days_since = None
         if last_date:
@@ -926,6 +935,7 @@ class Analytics:
             "repositories": len(repositories),
             "repositories_with_commits": sum(1 for repo in repositories if repo["commits"]),
             "active_repositories": status_counts["active"],
+            "active_repository_share": status_counts["active"] / len(repositories) if repositories else None,
             "quiet_repositories": status_counts["quiet"],
             "dormant_repositories": status_counts["dormant"],
             "empty_repositories": status_counts["empty"],
@@ -934,6 +944,7 @@ class Analytics:
             "non_merge_commits": commits - merge_commits,
             "merge_share": merge_commits / commits if commits else None,
             "authors": int(commit.get("authors") or 0),
+            "new_authors_last_30_days": new_authors_30,
             "committers": int(commit.get("committers") or 0),
             "bot_commits_in_effective_set": int(commit.get("bot_commits") or 0),
             "bot_commits_raw": raw_bot,
@@ -958,6 +969,10 @@ class Analytics:
             "local_branches": sum(int(repo.get("local_branches") or 0) for repo in repositories),
             "remote_branches": sum(int(repo.get("remote_branches") or 0) for repo in repositories),
             "tags": int(releases["summary"].get("tags") or 0),
+            "repositories_with_ci": ci_covered,
+            "ci_coverage": ci_covered / len(repositories) if repositories else None,
+            "repositories_with_license": licensed,
+            "license_coverage": licensed / len(repositories) if repositories else None,
             "failed_repositories": sum(1 for repo in repositories if repo["status"] == "stale") + int(
                 self.db.scalar("SELECT COUNT(*) FROM repositories WHERE active = 1 AND status = 'error'") or 0
             ),
